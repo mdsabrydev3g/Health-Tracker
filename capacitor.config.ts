@@ -11,9 +11,8 @@ const config: CapacitorConfig = {
   appName: "Health Tracker",
   webDir: "public",
   server: {
-    // Requires the Capacitor config to be regenerated per environment;
-    // set via docs/BUILD-MOBILE.md instructions.
-    url: process.env.CAP_SERVER_URL ?? "https://health-tracker.vercel.app",
+    // Live production app served in the WebView
+    url: process.env.CAP_SERVER_URL ?? "https://health-tracker-git-main-mdsabrydev3g.vercel.app",
     cleartext: false,
     androidScheme: "https",
   },

@@ -44,6 +44,12 @@ export default function MotherModePage() {
   }, [person]);
 
   useEffect(() => {
+    // /mother renders outside the app shell — load persons here
+    if (state.persons.length === 0) state.loadPersons();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     load();
     const t = setInterval(load, 30_000);
     return () => clearInterval(t);

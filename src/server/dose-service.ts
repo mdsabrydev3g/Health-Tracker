@@ -67,20 +67,24 @@ export async function syncDoses(opts?: { personId?: string }) {
     const rangeTo = new Date(now.getTime() + 14 * 86400000);
     const doses = materialiseDoses(schedInputs, tz, rangeFrom, rangeTo);
 
-    for (const d of doses) {
-      await db
-        .insert(schema.doseEvents)
-        .values({
-          personId: person.id,
-          medicationId: d.medicationId,
-          scheduleId: d.scheduleId,
-          scheduledAtUtc: d.scheduledAtUtc,
-          localDay: d.localDay,
-          status: "upcoming",
-          quantity: d.quantity,
-          idempotencyKey: d.idempotencyKey,
-        })
-        .onConflictDoNothing({ target: schema.doseEvents.idempotencyKey });
+    // Batch-insert all materialised doses in ONE round trip (chunks of 100)
+    for (let i = 0; i < doses.length; i += 100) {
+      const chunk = doses.slice(i, i + 100).map((d) => ({
+        personId: person.id,
+        medicationId: d.medicationId,
+        scheduleId: d.scheduleId,
+        scheduledAtUtc: d.scheduledAtUtc,
+        localDay: d.localDay,
+        status: "upcoming",
+        quantity: d.quantity,
+        idempotencyKey: d.idempotencyKey,
+      }));
+      if (chunk.length > 0) {
+        await db
+          .insert(schema.doseEvents)
+          .values(chunk)
+          .onConflictDoNothing({ target: schema.doseEvents.idempotencyKey });
+      }
     }
 
     // Advance statuses: upcoming→due at dose time, due→missed after grace.

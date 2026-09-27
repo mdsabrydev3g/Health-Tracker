@@ -22,6 +22,8 @@ import {
   toast,
 } from "@/components/ui";
 import { ScheduleFields, defaultSchedule, type ScheduleForm } from "@/components/schedule-form";
+import { QrScannerModal } from "@/components/qr-scanner";
+import { parseMedQr, type MedQrData } from "@/lib/med-qr";
 
 interface Medication {
   id: string;
@@ -49,6 +51,8 @@ export default function MedicationsPage() {
   const person = selectedPerson(state);
   const [meds, setMeds] = useState<Medication[] | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [prefill, setPrefill] = useState<MedQrData | null>(null);
 
   const load = useCallback(async () => {
     if (!person) return;
@@ -68,9 +72,14 @@ export default function MedicationsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-extrabold">الأدوية — {person.nameAr}</h1>
-        <Button onClick={() => setAddOpen(true)}>+ إضافة دواء</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setScanOpen(true)}>
+            📷 مسح QR
+          </Button>
+          <Button onClick={() => { setPrefill(null); setAddOpen(true); }}>+ إضافة دواء</Button>
+        </div>
       </div>
 
       {meds.length === 0 ? (
@@ -100,7 +109,28 @@ export default function MedicationsPage() {
         </div>
       )}
 
-      <AddMedicationModal open={addOpen} onClose={() => setAddOpen(false)} personId={person.id} onSaved={load} />
+      <AddMedicationModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        personId={person.id}
+        onSaved={load}
+        prefill={prefill}
+      />
+      <QrScannerModal
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onScan={(text) => {
+          setScanOpen(false);
+          const med = parseMedQr(text);
+          if (!med) {
+            toast("الكود غير مفهوم — استخدم أكواد Health Tracker أو نصاً بسيطاً", "err");
+            return;
+          }
+          setPrefill(med);
+          setAddOpen(true);
+          toast("تم قراءة الدواء من الكود — راجع البيانات قبل الحفظ");
+        }}
+      />
     </div>
   );
 }
@@ -110,11 +140,13 @@ function AddMedicationModal({
   onClose,
   personId,
   onSaved,
+  prefill,
 }: {
   open: boolean;
   onClose: () => void;
   personId: string;
   onSaved: () => void;
+  prefill?: MedQrData | null;
 }) {
   const [f, setF] = useState({
     nameAr: "",
@@ -135,6 +167,26 @@ function AddMedicationModal({
   });
   const [schedule, setSchedule] = useState<ScheduleForm>({ ...defaultSchedule });
   const [busy, setBusy] = useState(false);
+
+  // Prefill from a scanned QR payload each time the modal opens
+  useEffect(() => {
+    if (!open || !prefill) return;
+    setF((prev) => ({
+      ...prev,
+      nameAr: prefill.nameAr ?? "",
+      nameEn: prefill.nameEn ?? "",
+      form: prefill.form ?? "tablet",
+      strengthValue: prefill.strengthValue ?? "",
+      strengthUnit: prefill.strengthUnit ?? "mg",
+      foodRule: prefill.foodRule ?? "none",
+      doctor: prefill.doctor ?? "",
+    }));
+    setSchedule({
+      ...defaultSchedule,
+      times: prefill.times && prefill.times.length ? prefill.times : ["08:00"],
+      quantityPerDose: prefill.quantityPerDose ?? 1,
+    });
+  }, [open, prefill]);
 
   async function submit() {
     if (!f.nameAr.trim()) {

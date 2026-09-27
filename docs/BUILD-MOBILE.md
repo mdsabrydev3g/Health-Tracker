@@ -51,7 +51,13 @@ npx cap open android
 <uses-permission android:name="USE_EXACT_ALARM" />
 <uses-permission android:name="REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 <uses-permission android:name="RECEIVE_BOOT_COMPLETED" />
+<uses-permission android:name="CAMERA" />
 ```
+
+- **الكاميرا (لميزة مسح QR):** إذن `CAMERA` مطلوب — عند أول استخدام للماسح
+  سيطلب النظام الإذن تلقائياً. وإن لم يعمل داخل WebView أضِف معالج إذن
+  `onPermissionRequest` في `MainActivity` أو استخدم إضافة Capacitor
+  `@capacitor/camera` لاحقاً.
 
 - على Android 14+ يُطلب من المستخدم منح **إشعارات دقيقة** من إعدادات النظام
   (تظهر مرة واحدة — اشرحها بالعربية).

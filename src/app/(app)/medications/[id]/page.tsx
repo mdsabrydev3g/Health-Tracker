@@ -20,6 +20,8 @@ import {
   toast,
 } from "@/components/ui";
 import { ScheduleFields, defaultSchedule, type ScheduleForm } from "@/components/schedule-form";
+import { QrGenerateModal } from "@/components/qr-generate";
+import { encodeMedQr } from "@/lib/med-qr";
 
 interface Medication {
   id: string;
@@ -98,6 +100,7 @@ export default function MedicationDetailPage() {
   const [events, setEvents] = useState<InventoryEvent[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [schedOpen, setSchedOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -175,6 +178,9 @@ export default function MedicationDetailPage() {
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
             تعديل البيانات
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setQrOpen(true)}>
+            🔳 إنشاء QR
           </Button>
           <Button variant="outline" size="sm" onClick={() => setSchedOpen(true)}>
             + جدول جديد (يغلق القديم)
@@ -258,6 +264,24 @@ export default function MedicationDetailPage() {
       </Card>
 
       <EditModal open={editOpen} onClose={() => setEditOpen(false)} med={med} onSaved={load} />
+      {qrOpen && (
+        <QrGenerateModal
+          open={qrOpen}
+          onClose={() => setQrOpen(false)}
+          title={`QR — ${med.nameAr}`}
+          payload={encodeMedQr({
+            nameAr: med.nameAr,
+            nameEn: med.nameEn,
+            strengthValue: med.strengthValue,
+            strengthUnit: med.strengthUnit,
+            form: med.form,
+            quantityPerDose: current ? Number(current.quantityPerDose) : 1,
+            times: current?.times ?? [],
+            foodRule: med.foodRule,
+            doctor: med.doctor,
+          })}
+        />
+      )}
       <NewScheduleModal
         open={schedOpen}
         onClose={() => setSchedOpen(false)}

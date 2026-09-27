@@ -39,20 +39,31 @@ export function adherenceStats(doses: AdherenceDoseLike[], now: Date): Adherence
 }
 
 /**
- * Streak: consecutive local days ending today (or yesterday) with zero missed
- * scheduled doses. Neutral by design — never used for shaming.
+ * Streak: consecutive local days that had scheduled doses and zero misses,
+ * ending today (or the most recent such day). Days with no doses break the
+ * streak rather than counting toward it.
  */
 export function adherenceStreak(doses: AdherenceDoseLike[], todayLocal: string): number {
-  const missedDays = new Set(doses.filter((d) => d.status === "missed").map((d) => d.localDay));
+  const byDay = new Map<string, { missed: number; total: number }>();
+  for (const d of doses) {
+    const cur = byDay.get(d.localDay) ?? { missed: 0, total: 0 };
+    cur.total++;
+    if (d.status === "missed") cur.missed++;
+    byDay.set(d.localDay, cur);
+  }
   let streak = 0;
   let cursor = todayLocal;
-  // if today has no doses yet or none missed, start from today; otherwise yesterday
-  const todayHasDoses = doses.some((d) => d.localDay === todayLocal);
-  if (missedDays.has(todayLocal)) cursor = shiftDay(todayLocal, -1);
-  else if (!todayHasDoses) cursor = shiftDay(todayLocal, -1);
   let guard = 0;
-  while (!missedDays.has(cursor) && guard < 3650) {
-    streak++;
+  while (guard < 3650) {
+    const day = byDay.get(cursor);
+    if (!day || day.total === 0) {
+      if (streak > 0 || cursor < todayLocal) break;
+      // today has no doses yet — start counting from yesterday
+    } else if (day.missed > 0) {
+      break;
+    } else {
+      streak++;
+    }
     cursor = shiftDay(cursor, -1);
     guard++;
   }

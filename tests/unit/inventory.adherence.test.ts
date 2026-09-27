@@ -129,4 +129,17 @@ describe("adherence engine", () => {
     ];
     expect(adherenceStreak(doses, "2026-09-27")).toBe(5);
   });
+
+  it("days without doses break the streak (no phantom infinite streak)", () => {
+    const doses = [
+      { scheduledAtUtc: past("2026-09-20"), status: "taken", localDay: "2026-09-20" },
+      { scheduledAtUtc: past("2026-09-27"), status: "taken", localDay: "2026-09-27" },
+    ];
+    // yesterday+ has no doses → streak is only today's clean day
+    expect(adherenceStreak(doses, "2026-09-27")).toBe(1);
+  });
+
+  it("no doses at all → streak 0", () => {
+    expect(adherenceStreak([], "2026-09-27")).toBe(0);
+  });
 });

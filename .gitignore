@@ -11,3 +11,6 @@ android/.gradle/
 android/local.properties
 coverage/
 drizzle/meta/
+
+.vercel
+.env*

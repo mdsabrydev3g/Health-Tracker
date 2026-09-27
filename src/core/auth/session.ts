@@ -25,10 +25,19 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
-  const [iters, salt, expected] = stored.split(":");
-  if (!iters || !salt || !expected) return false;
-  const hash = crypto.pbkdf2Sync(password, salt, parseInt(iters, 10), 32, "sha256").toString("hex");
-  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(expected, "hex"));
+  try {
+    const [iters, salt, expected] = stored.trim().split(":");
+    if (!iters || !salt || !expected) return false;
+    const hash = crypto
+      .pbkdf2Sync(password, salt, parseInt(iters, 10), 32, "sha256")
+      .toString("hex");
+    const a = Buffer.from(hash, "hex");
+    const b = Buffer.from(expected, "hex");
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false; // malformed stored hash — treat as invalid, never crash
+  }
 }
 
 export async function createSessionToken(email: string): Promise<string> {
